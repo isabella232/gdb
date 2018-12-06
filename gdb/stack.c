@@ -24,6 +24,7 @@
 #include "expression.h"
 #include "language.h"
 #include "frame.h"
+#include "gdbarch.h"
 #include "gdbcmd.h"
 #include "gdbcore.h"
 #include "target.h"
@@ -2743,10 +2744,12 @@ return_command (const char *retval_exp, int from_tty)
   struct value *return_value = NULL;
   struct value *function = NULL;
   const char *query_prefix = "";
+  int frame_level;
 
   thisframe = get_selected_frame ("No selected frame.");
   thisfun = get_frame_function (thisframe);
   gdbarch = get_frame_arch (thisframe);
+  frame_level = get_frame_level (thisframe);
 
   if (get_frame_type (get_current_frame ()) == INLINE_FRAME)
     error (_("Can not force return from an inlined function."));
@@ -2834,6 +2837,22 @@ return_command (const char *retval_exp, int from_tty)
 
   /* Discard the selected frame and all frames inner-to it.  */
   frame_pop (get_selected_frame (NULL));
+
+  /* Decrement the shadow stack pointer by the required amount defined by
+     frame_level.  */
+  if (gdbarch_get_shstk_pointer_p (gdbarch)
+      && gdbarch_set_shstk_pointer_p (gdbarch))
+    {
+      CORE_ADDR ssp;
+      gdbarch_get_shstk_pointer (gdbarch, &ssp);
+      const int addr_size = gdbarch_addr_bit (gdbarch) / TARGET_CHAR_BIT;
+
+      /* If return is called from frame 0, we decrement ssp by one.  If
+	 return is called from a different frame, we decrement the ssp by
+	 the number of inner frames that are discarded (1 + frame_level).  */
+      const CORE_ADDR new_ssp = ssp + (addr_size * (1 + frame_level));
+      gdbarch_set_shstk_pointer (gdbarch, &new_ssp);
+    }
 
   /* Store RETURN_VALUE in the just-returned register set.  */
   if (return_value != NULL)

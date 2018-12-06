@@ -3276,6 +3276,10 @@ amd64_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch,
 					amd64_in_indirect_branch_thunk);
 
   register_amd64_ravenscar_ops (gdbarch);
+
+  /* Shadow stack.  */
+  set_gdbarch_set_shstk_pointer (gdbarch, i386_cet_set_shstk_pointer);
+  set_gdbarch_get_shstk_pointer (gdbarch, i386_cet_get_shstk_pointer);
 }
 
 /* Initialize ARCH for x86-64, no osabi.  */
