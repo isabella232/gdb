@@ -78,6 +78,7 @@ libgdbsupport_a_SOURCES = \
     tdesc.cc \
     thread-pool.cc \
     xml-utils.cc \
+    x86-xstate.cc \
     ${eventpipe} \
     $(selftest)
 
