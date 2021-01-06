@@ -30,6 +30,12 @@
     all locations of the selected breakpoint.  This is equivalent to
     the '-force' flag of the CLI's "cond" command.
 
+inferior [ID]
+  When the ID parameter is omitted, then this command prints information
+  about the current inferior.  When the ID parameter is present, the
+  behavior of the command is unchanged and have the inferior ID become
+  the current inferior.
+
 *** Changes in GDB 10
 
 * There are new feature names for ARC targets: "org.gnu.gdb.arc.core"
