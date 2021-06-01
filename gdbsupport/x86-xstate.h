@@ -101,4 +101,95 @@ x86_extended_feature get_x86_extended_feature (unsigned int feature);
 
 #define I387_MXCSR_INIT_VAL 0x1f80
 
+/* These structs should have the proper sizes and alignment on both
+   i386 and x86-64 machines.  */
+
+struct i387_fsave {
+  /* All these are only sixteen bits, plus padding, except for fop (which
+     is only eleven bits), and fooff / fioff (which are 32 bits each).  */
+  unsigned short fctrl;
+  unsigned short pad1;
+  unsigned short fstat;
+  unsigned short pad2;
+  unsigned short ftag;
+  unsigned short pad3;
+  unsigned int fioff;
+  unsigned short fiseg;
+  unsigned short fop;
+  unsigned int fooff;
+  unsigned short foseg;
+  unsigned short pad4;
+
+  /* Space for eight 80-bit FP values.  */
+  unsigned char st_space[80];
+};
+
+struct i387_fxsave {
+  /* All these are only sixteen bits, plus padding, except for fop (which
+     is only eleven bits), and fooff / fioff (which are 32 bits each).  */
+  unsigned short fctrl;
+  unsigned short fstat;
+  unsigned short ftag;
+  unsigned short fop;
+  unsigned int fioff;
+  unsigned short fiseg;
+  unsigned short pad1;
+  unsigned int fooff;
+  unsigned short foseg;
+  unsigned short pad12;
+
+  unsigned int mxcsr;
+  unsigned int pad3;
+
+  /* Space for eight 80-bit FP values in 128-bit spaces.  */
+  unsigned char st_space[128];
+
+  /* Space for eight 128-bit XMM values, or 16 on x86-64.  */
+  unsigned char xmm_space[256];
+};
+
+struct i387_xsave {
+  struct i387_fxsave fx;
+
+  unsigned char reserved1[48];
+
+  /* The extended control register 0 (the XFEATURE_ENABLED_MASK
+     register).  */
+  unsigned long long xcr0;
+
+  unsigned char reserved2[40];
+
+  /* The XSTATE_BV bit vector.  */
+  unsigned long long xstate_bv;
+
+  unsigned char reserved3[56];
+
+  /* Space for eight upper 128-bit YMM values, or 16 on x86-64.  */
+  unsigned char ymmh_space[256];
+
+  unsigned char reserved4[128];
+
+  /* Space for 4 bound registers values of 128 bits.  */
+  unsigned char mpx_bnd_space[64];
+
+  /* Space for 2 MPX configuration registers of 64 bits
+     plus reserved space.  */
+  unsigned char mpx_cfg_space[16];
+
+  unsigned char reserved5[48];
+
+  /* Space for 8 OpMask register values of 64 bits.  */
+  unsigned char k_space[64];
+
+  /* Space for 16 256-bit zmm0-15.  */
+  unsigned char zmmh_low_space[512];
+
+  /* Space for 16 512-bit zmm16-31 values.  */
+  unsigned char zmmh_high_space[1024];
+
+  /* Space for 1 32-bit PKRU register.  The HW XSTATE size for this feature is
+     actually 64 bits, but WRPKRU/RDPKRU instructions ignore upper 32 bits.  */
+  unsigned char pkru_space[8];
+};
+
 #endif /* COMMON_X86_XSTATE_H */
