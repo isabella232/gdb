@@ -148,11 +148,11 @@ struct i387_fxsave {
   unsigned char xmm_space[256];
 };
 
-struct i387_xsave {
+struct xsave_fixed_addresses {
+  /* Size of i387_fxsave is 416 bytes.  */
   struct i387_fxsave fx;
 
   unsigned char reserved1[48];
-
   /* The extended control register 0 (the XFEATURE_ENABLED_MASK
      register).  */
   unsigned long long xcr0;
@@ -162,34 +162,110 @@ struct i387_xsave {
   /* The XSTATE_BV bit vector.  */
   unsigned long long xstate_bv;
 
-  unsigned char reserved3[56];
+  /* The XCOMP_BV bit vector.  */
+  unsigned long long xcomp_bv;
 
-  /* Space for eight upper 128-bit YMM values, or 16 on x86-64.  */
-  unsigned char ymmh_space[256];
+  unsigned char reserved3[48];
 
-  unsigned char reserved4[128];
+  /* Byte 576.  End of registers with fixed position in XSAVE.
+     The position of other XSAVE registers will be calculated
+     from the appropriate CPUID calls.  */
+};
 
-  /* Space for 4 bound registers values of 128 bits.  */
-  unsigned char mpx_bnd_space[64];
+class i387_xsave {
+  /* Pointer to the legacy region of the XSAVE area.  Legacy region
+     has fixed memory offsets.  */
+  struct xsave_fixed_addresses *xsave_fixed =  nullptr;
 
-  /* Space for 2 MPX configuration registers of 64 bits
+  /* Pointer to the XSAVE area.  The purpose of the pointer is to use it
+     as a base for calculating offsets of the extended region.  For example:
+     avx_offset = xsave + CPUID_CALL_FOR (AVX);  */
+  unsigned char *xsave = nullptr;
+
+public:
+  i387_xsave (const void *buf):
+    xsave_fixed {(struct xsave_fixed_addresses *) buf},
+    xsave {(unsigned char *) buf} {}
+
+  i387_fxsave* get_fxsave () const
+    {
+      return &xsave_fixed->fx;
+    }
+
+  /* Get a reference to xcr0 register.  */
+  unsigned long long& xcr0 () const
+    {
+      return xsave_fixed->xcr0;
+    }
+
+  /* Get a reference to xstate_bv register.  */
+  unsigned long long& xstate_bv () const
+    {
+      return xsave_fixed->xstate_bv;
+    }
+
+  /* Get a reference to xcomp_bv register.  */
+  unsigned long long& xcomp_bv () const
+    {
+      return xsave_fixed->xcomp_bv;
+    }
+
+  /* Memory address of ST values.  */
+  unsigned char* st_space () const
+    {
+      return &get_fxsave ()->st_space[0];
+    }
+
+  /* Memory address of XMM values.  */
+  unsigned char* xmm_space () const
+    {
+      return &get_fxsave ()->xmm_space[0];
+    }
+
+  /* Memory address of eight upper 128-bit YMM values, or 16 on x86-64.  */
+  unsigned char* ymmh_space () const
+    {
+      return xsave + get_x86_extended_feature (X86_XSTATE_AVX_ID).offset;
+    }
+
+  /* Memory address of 4 bound registers values of 128 bits.  */
+  unsigned char* mpx_bnd_space () const
+    {
+      return xsave + get_x86_extended_feature (X86_XSTATE_BNDREGS_ID).offset;
+    }
+
+  /* Memory address of 2 MPX configuration registers of 64 bits
      plus reserved space.  */
-  unsigned char mpx_cfg_space[16];
+  unsigned char* mpx_cfg_space () const
+    {
+      return xsave + get_x86_extended_feature (X86_XSTATE_BNDCFG_ID).offset;
+    }
 
-  unsigned char reserved5[48];
+  /* Memory address of 8 OpMask register values of 64 bits.  */
+  unsigned char* k_space () const
+    {
+      return xsave + get_x86_extended_feature (X86_XSTATE_K_ID).offset;
+    }
 
-  /* Space for 8 OpMask register values of 64 bits.  */
-  unsigned char k_space[64];
+  /* Memory address of 16 256-bit zmm0-15.  */
+  unsigned char* zmmh_low_space () const
+    {
+      return xsave + get_x86_extended_feature (X86_XSTATE_ZMM_H_ID).offset;
+    }
 
-  /* Space for 16 256-bit zmm0-15.  */
-  unsigned char zmmh_low_space[512];
+  /* Memory address of 16 512-bit zmm16-31 values.  */
+  unsigned char* zmmh_high_space () const
+    {
+      return xsave + get_x86_extended_feature (X86_XSTATE_ZMM_ID).offset;
+    }
 
-  /* Space for 16 512-bit zmm16-31 values.  */
-  unsigned char zmmh_high_space[1024];
-
-  /* Space for 1 32-bit PKRU register.  The HW XSTATE size for this feature is
-     actually 64 bits, but WRPKRU/RDPKRU instructions ignore upper 32 bits.  */
-  unsigned char pkru_space[8];
+  /* Memory address of 1 32-bit PKRU register.  The HW XSTATE size for this
+     feature is actually 64 bits, but WRPKRU/RDPKRU instructions ignore upper
+     32 bits.  */
+  unsigned char* pkru_space () const
+    {
+      return xsave + get_x86_extended_feature (X86_XSTATE_PKRU_ID).offset;
+    }
 };
 
 #endif /* COMMON_X86_XSTATE_H */

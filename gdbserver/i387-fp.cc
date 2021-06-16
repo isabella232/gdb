@@ -140,15 +140,14 @@ i387_cache_to_fxsave (struct regcache *regcache, void *buf)
 void
 i387_cache_to_xsave (struct regcache *regcache, void *buf)
 {
-  struct i387_xsave *fp = (struct i387_xsave *) buf;
+  i387_xsave fp {buf};
   bool amd64 = register_size (regcache->tdesc, 0) == 8;
   int i;
   unsigned long val, val2;
   unsigned long long xstate_bv = 0;
   unsigned long long clear_bv = 0;
   char raw[64];
-  char *p;
-
+  unsigned char *p;
   /* Amd64 has 16 xmm regs; I386 has 8 xmm regs.  */
   int num_xmm_registers = amd64 ? 16 : 8;
   /* AVX512 extends the existing xmm/ymm registers to a wider mode: zmm.  */
@@ -160,7 +159,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
 
   /* The supported bits in `xstat_bv' are 8 bytes.  Clear part in
      vector registers if its bit in xstat_bv is zero.  */
-  clear_bv = (~fp->xstate_bv) & x86_xcr0;
+  clear_bv = (~fp.xstate_bv ()) & x86_xcr0;
 
   /* Clear part in x87 and vector registers if its bit in xstat_bv is
      zero.  */
@@ -169,58 +168,59 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       if ((clear_bv & X86_XSTATE_X87))
 	{
 	  for (i = 0; i < 8; i++)
-	    memset (((char *) &fp->fx.st_space[0]) + i * 16, 0, 10);
+	    memset (fp.st_space () + i * 16, 0, 10);
 
-	  fp->fx.fioff = 0;
-	  fp->fx.fooff = 0;
-	  fp->fx.fctrl = I387_FCTRL_INIT_VAL;
-	  fp->fx.fstat = 0;
-	  fp->fx.ftag = 0;
-	  fp->fx.fiseg = 0;
-	  fp->fx.foseg = 0;
-	  fp->fx.fop = 0;
+	  fp.get_fxsave ()->fioff = 0;
+	  fp.get_fxsave ()->fooff = 0;
+	  fp.get_fxsave ()->fctrl = I387_FCTRL_INIT_VAL;
+	  fp.get_fxsave ()->fstat = 0;
+	  fp.get_fxsave ()->ftag = 0;
+	  fp.get_fxsave ()->fiseg = 0;
+	  fp.get_fxsave ()->foseg = 0;
+	  fp.get_fxsave ()->fop = 0;
 	}
 
       if ((clear_bv & X86_XSTATE_SSE))
 	for (i = 0; i < num_xmm_registers; i++)
-	  memset (((char *) &fp->fx.xmm_space[0]) + i * 16, 0, 16);
+	  memset (fp.xmm_space () + i * 16, 0, 16);
+
 
       if ((clear_bv & X86_XSTATE_AVX))
 	for (i = 0; i < num_xmm_registers; i++)
-	  memset (((char *) &fp->ymmh_space[0]) + i * 16, 0, 16);
+	  memset (fp.ymmh_space () + i * 16, 0, 16);
 
       if ((clear_bv & X86_XSTATE_SSE) && (clear_bv & X86_XSTATE_AVX))
-	memset (((char *) &fp->fx.mxcsr), 0, 4);
+	memset (((char *) &fp.get_fxsave ()->mxcsr), 0, 4);
 
       if ((clear_bv & X86_XSTATE_BNDREGS))
 	for (i = 0; i < num_mpx_bnd_registers; i++)
-	  memset (((char *) &fp->mpx_bnd_space[0]) + i * 16, 0, 16);
+	  memset (fp.mpx_bnd_space () + i * 16, 0, 16);
 
       if ((clear_bv & X86_XSTATE_BNDCFG))
 	for (i = 0; i < num_mpx_cfg_registers; i++)
-	  memset (((char *) &fp->mpx_cfg_space[0]) + i * 8, 0, 8);
+	  memset (fp.mpx_cfg_space () + i * 8, 0, 8);
 
       if ((clear_bv & X86_XSTATE_K))
 	for (i = 0; i < num_avx512_k_registers; i++)
-	  memset (((char *) &fp->k_space[0]) + i * 8, 0, 8);
+	  memset (fp.k_space () + i * 8, 0, 8);
 
       if ((clear_bv & X86_XSTATE_ZMM_H))
 	for (i = 0; i < num_avx512_zmmh_low_registers; i++)
-	  memset (((char *) &fp->zmmh_low_space[0]) + i * 32, 0, 32);
+	  memset (fp.zmmh_low_space () + i * 32, 0, 32);
 
       if ((clear_bv & X86_XSTATE_ZMM))
 	{
 	  for (i = 0; i < num_avx512_zmmh_high_registers; i++)
-	    memset (((char *) &fp->zmmh_low_space[0]) + 32 + i * 64, 0, 32);
+	    memset (fp.zmmh_low_space () + 32 + i * 64, 0, 32);
 	  for (i = 0; i < num_avx512_xmm_registers; i++)
-	    memset (((char *) &fp->zmmh_high_space[0]) + i * 64, 0, 16);
+	    memset (fp.zmmh_high_space () + i * 64, 0, 16);
 	  for (i = 0; i < num_avx512_ymmh_registers; i++)
-	    memset (((char *) &fp->zmmh_high_space[0]) + 16 + i * 64, 0, 16);
+	    memset (fp.zmmh_high_space () + 16 + i * 64, 0, 16);
 	}
 
       if ((clear_bv & X86_XSTATE_PKRU))
 	for (i = 0; i < num_pkeys_registers; i++)
-	  memset (((char *) &fp->pkru_space[0]) + i * 4, 0, 4);
+	  memset (fp.pkru_space () + i * 4, 0, 4);
     }
 
   /* Check if any x87 registers are changed.  */
@@ -231,7 +231,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < 8; i++)
 	{
 	  collect_register (regcache, i + st0_regnum, raw);
-	  p = ((char *) &fp->fx.st_space[0]) + i * 16;
+	  p = fp.st_space () + i * 16;
 	  if (memcmp (raw, p, 10))
 	    {
 	      xstate_bv |= X86_XSTATE_X87;
@@ -248,7 +248,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_xmm_registers; i++) 
 	{
 	  collect_register (regcache, i + xmm0_regnum, raw);
-	  p = ((char *) &fp->fx.xmm_space[0]) + i * 16;
+	  p = fp.xmm_space () + i * 16;
 	  if (memcmp (raw, p, 16))
 	    {
 	      xstate_bv |= X86_XSTATE_SSE;
@@ -265,7 +265,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_xmm_registers; i++) 
 	{
 	  collect_register (regcache, i + ymm0h_regnum, raw);
-	  p = ((char *) &fp->ymmh_space[0]) + i * 16;
+	  p = fp.ymmh_space () + i * 16;
 	  if (memcmp (raw, p, 16))
 	    {
 	      xstate_bv |= X86_XSTATE_AVX;
@@ -282,7 +282,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_mpx_bnd_registers; i++)
 	{
 	  collect_register (regcache, i + bnd0r_regnum, raw);
-	  p = ((char *) &fp->mpx_bnd_space[0]) + i * 16;
+	  p = fp.mpx_bnd_space () + i * 16;
 	  if (memcmp (raw, p, 16))
 	    {
 	      xstate_bv |= X86_XSTATE_BNDREGS;
@@ -299,7 +299,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_mpx_cfg_registers; i++)
 	{
 	  collect_register (regcache, i + bndcfg_regnum, raw);
-	  p = ((char *) &fp->mpx_cfg_space[0]) + i * 8;
+	  p = fp.mpx_cfg_space () + i * 8;
 	  if (memcmp (raw, p, 8))
 	    {
 	      xstate_bv |= X86_XSTATE_BNDCFG;
@@ -316,7 +316,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_avx512_k_registers; i++)
 	{
 	  collect_register (regcache, i + k0_regnum, raw);
-	  p = ((char *) &fp->k_space[0]) + i * 8;
+	  p = fp.k_space () + i * 8;
 	  if (memcmp (raw, p, 8) != 0)
 	    {
 	      xstate_bv |= X86_XSTATE_K;
@@ -333,7 +333,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_avx512_zmmh_low_registers; i++)
 	{
 	  collect_register (regcache, i + zmm0h_regnum, raw);
-	  p = ((char *) &fp->zmmh_low_space[0]) + i * 32;
+	  p = fp.zmmh_low_space () + i * 32;
 	  if (memcmp (raw, p, 32) != 0)
 	    {
 	      xstate_bv |= X86_XSTATE_ZMM_H;
@@ -352,7 +352,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_avx512_zmmh_high_registers; i++)
 	{
 	  collect_register (regcache, i + zmm16h_regnum, raw);
-	  p = ((char *) &fp->zmmh_high_space[0]) + 32 + i * 64;
+	  p = fp.zmmh_high_space () + 32 + i * 64;
 	  if (memcmp (raw, p, 32) != 0)
 	    {
 	      xstate_bv |= X86_XSTATE_ZMM;
@@ -371,7 +371,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_avx512_xmm_registers; i++)
 	{
 	  collect_register (regcache, i + xmm_avx512_regnum, raw);
-	  p = ((char *) &fp->zmmh_high_space[0]) + i * 64;
+	  p = fp.zmmh_high_space () + i * 64;
 	  if (memcmp (raw, p, 16) != 0)
 	    {
 	      xstate_bv |= X86_XSTATE_ZMM;
@@ -390,7 +390,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_avx512_ymmh_registers; i++)
 	{
 	  collect_register (regcache, i + ymmh_avx512_regnum, raw);
-	  p = ((char *) &fp->zmmh_high_space[0]) + 16 + i * 64;
+	  p = fp.zmmh_high_space () + 16 + i * 64;
 	  if (memcmp (raw, p, 16) != 0)
 	    {
 	      xstate_bv |= X86_XSTATE_ZMM;
@@ -407,7 +407,7 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
       for (i = 0; i < num_pkeys_registers; i++)
 	{
 	  collect_register (regcache, i + pkru_regnum, raw);
-	  p = ((char *) &fp->pkru_space[0]) + i * 4;
+	  p = fp.pkru_space () + i * 4;
 	  if (memcmp (raw, p, 4) != 0)
 	    {
 	      xstate_bv |= X86_XSTATE_PKRU;
@@ -419,53 +419,53 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
   if ((x86_xcr0 & X86_XSTATE_SSE) || (x86_xcr0 & X86_XSTATE_AVX))
     {
       collect_register_by_name (regcache, "mxcsr", raw);
-      if (memcmp (raw, &fp->fx.mxcsr, 4) != 0)
+      if (memcmp (raw, &fp.get_fxsave ()->mxcsr, 4) != 0)
 	{
-	  if (((fp->xstate_bv | xstate_bv)
+	  if (((fp.xstate_bv () | xstate_bv)
 	       & (X86_XSTATE_SSE | X86_XSTATE_AVX)) == 0)
 	    xstate_bv |= X86_XSTATE_SSE;
-	  memcpy (&fp->fx.mxcsr, raw, 4);
+	  memcpy (&fp.get_fxsave ()->mxcsr, raw, 4);
 	}
     }
 
   if (x86_xcr0 & X86_XSTATE_X87)
     {
       collect_register_by_name (regcache, "fioff", raw);
-      if (memcmp (raw, &fp->fx.fioff, 4) != 0)
+      if (memcmp (raw, &fp.get_fxsave ()->fioff, 4) != 0)
 	{
 	  xstate_bv |= X86_XSTATE_X87;
-	  memcpy (&fp->fx.fioff, raw, 4);
+	  memcpy (&fp.get_fxsave ()->fioff, raw, 4);
 	}
 
       collect_register_by_name (regcache, "fooff", raw);
-      if (memcmp (raw, &fp->fx.fooff, 4) != 0)
+      if (memcmp (raw, &fp.get_fxsave ()->fooff, 4) != 0)
 	{
 	  xstate_bv |= X86_XSTATE_X87;
-	  memcpy (&fp->fx.fooff, raw, 4);
+	  memcpy (&fp.get_fxsave ()->fooff, raw, 4);
 	}
 
       /* This one's 11 bits... */
       val2 = regcache_raw_get_unsigned_by_name (regcache, "fop");
-      val2 = (val2 & 0x7FF) | (fp->fx.fop & 0xF800);
-      if (fp->fx.fop != val2)
+      val2 = (val2 & 0x7FF) | (fp.get_fxsave ()->fop & 0xF800);
+      if (fp.get_fxsave ()->fop != val2)
 	{
 	  xstate_bv |= X86_XSTATE_X87;
-	  fp->fx.fop = val2;
+	  fp.get_fxsave ()->fop = val2;
 	}
 
       /* Some registers are 16-bit.  */
       val = regcache_raw_get_unsigned_by_name (regcache, "fctrl");
-      if (fp->fx.fctrl != val)
+      if (fp.get_fxsave ()->fctrl != val)
 	{
 	  xstate_bv |= X86_XSTATE_X87;
-	  fp->fx.fctrl = val;
+	  fp.get_fxsave ()->fctrl = val;
 	}
 
       val = regcache_raw_get_unsigned_by_name (regcache, "fstat");
-      if (fp->fx.fstat != val)
+      if (fp.get_fxsave ()->fstat != val)
 	{
 	  xstate_bv |= X86_XSTATE_X87;
-	  fp->fx.fstat = val;
+	  fp.get_fxsave ()->fstat = val;
 	}
 
       /* Convert to the simplifed tag form stored in fxsave data.  */
@@ -478,30 +478,30 @@ i387_cache_to_xsave (struct regcache *regcache, void *buf)
 	  if (tag != 3)
 	    val2 |= (1 << i);
 	}
-      if (fp->fx.ftag != val2)
+      if (fp.get_fxsave ()->ftag != val2)
 	{
 	  xstate_bv |= X86_XSTATE_X87;
-	  fp->fx.ftag = val2;
+	  fp.get_fxsave ()->ftag = val2;
 	}
 
       val = regcache_raw_get_unsigned_by_name (regcache, "fiseg");
-      if (fp->fx.fiseg != val)
+      if (fp.get_fxsave ()->fiseg != val)
 	{
 	  xstate_bv |= X86_XSTATE_X87;
-	  fp->fx.fiseg = val;
+	  fp.get_fxsave ()->fiseg = val;
 	}
 
       val = regcache_raw_get_unsigned_by_name (regcache, "foseg");
-      if (fp->fx.foseg != val)
+      if (fp.get_fxsave ()->foseg != val)
 	{
 	  xstate_bv |= X86_XSTATE_X87;
-	  fp->fx.foseg = val;
+	  fp.get_fxsave ()->foseg = val;
 	}
     }
 
   /* Update the corresponding bits in xstate_bv if any SSE/AVX
      registers are changed.  */
-  fp->xstate_bv |= xstate_bv;
+  fp.xstate_bv () |= xstate_bv;
 }
 
 static int
@@ -607,8 +607,7 @@ i387_fxsave_to_cache (struct regcache *regcache, const void *buf)
 void
 i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 {
-  struct i387_xsave *fp = (struct i387_xsave *) buf;
-  struct i387_fxsave *fxp = (struct i387_fxsave *) buf;
+  i387_xsave fp {buf};
   bool amd64 = register_size (regcache->tdesc, 0) == 8;
   int i, top;
   unsigned long val;
@@ -626,7 +625,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 
   /* The supported bits in `xstat_bv' are 8 bytes.  Clear part in
      vector registers if its bit in xstat_bv is zero.  */
-  clear_bv = (~fp->xstate_bv) & x86_xcr0;
+  clear_bv = (~fp.xstate_bv ()) & x86_xcr0;
 
   /* Check if any x87 registers are changed.  */
   if ((x86_xcr0 & X86_XSTATE_X87) != 0)
@@ -640,7 +639,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->fx.st_space[0];
+	  p = fp.st_space ();
 	  for (i = 0; i < 8; i++)
 	    supply_register (regcache, i + st0_regnum, p + i * 16);
 	}
@@ -657,7 +656,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->fx.xmm_space[0];
+	  p = fp.xmm_space ();
 	  for (i = 0; i < num_xmm_registers; i++)
 	    supply_register (regcache, i + xmm0_regnum, p + i * 16);
 	}
@@ -674,7 +673,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->ymmh_space[0];
+	  p = fp.ymmh_space ();
 	  for (i = 0; i < num_xmm_registers; i++)
 	    supply_register (regcache, i + ymm0h_regnum, p + i * 16);
 	}
@@ -692,7 +691,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->mpx_bnd_space[0];
+	  p = fp.mpx_bnd_space ();
 	  for (i = 0; i < num_mpx_bnd_registers; i++)
 	    supply_register (regcache, i + bnd0r_regnum, p + i * 16);
 	}
@@ -710,7 +709,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->mpx_cfg_space[0];
+	  p = fp.mpx_cfg_space ();
 	  for (i = 0; i < num_mpx_cfg_registers; i++)
 	    supply_register (regcache, i + bndcfg_regnum, p + i * 8);
 	}
@@ -727,7 +726,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->k_space[0];
+	  p = fp.k_space ();
 	  for (i = 0; i < num_avx512_k_registers; i++)
 	    supply_register (regcache, i + k0_regnum, p + i * 8);
 	}
@@ -744,7 +743,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->zmmh_low_space[0];
+	  p = fp.zmmh_low_space ();
 	  for (i = 0; i < num_avx512_zmmh_low_registers; i++)
 	    supply_register (regcache, i + zmm0h_regnum, p + i * 32);
 	}
@@ -773,7 +772,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->zmmh_high_space[0];
+	  p = fp.zmmh_high_space ();
 	  for (i = 0; i < num_avx512_zmmh_high_registers; i++)
 	    supply_register (regcache, i + zmm16h_regnum, p + 32 + i * 64);
 	  for (i = 0; i < num_avx512_ymmh_registers; i++)
@@ -794,7 +793,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
 	}
       else
 	{
-	  p = (gdb_byte *) &fp->pkru_space[0];
+	  p = fp.pkru_space ();
 	  for (i = 0; i < num_pkeys_registers; i++)
 	    supply_register (regcache, i + pkru_regnum, p + i * 4);
 	}
@@ -807,7 +806,7 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
       supply_register_by_name (regcache, "mxcsr", &default_mxcsr);
     }
   else
-    supply_register_by_name (regcache, "mxcsr", &fp->fx.mxcsr);
+    supply_register_by_name (regcache, "mxcsr", &fp.get_fxsave ()->mxcsr);
 
   if ((clear_bv & X86_XSTATE_X87) != 0)
     {
@@ -828,37 +827,37 @@ i387_xsave_to_cache (struct regcache *regcache, const void *buf)
     }
   else
     {
-      supply_register_by_name (regcache, "fioff", &fp->fx.fioff);
-      supply_register_by_name (regcache, "fooff", &fp->fx.fooff);
+      supply_register_by_name (regcache, "fioff", &fp.get_fxsave ()->fioff);
+      supply_register_by_name (regcache, "fooff", &fp.get_fxsave ()->fooff);
 
       /* Some registers are 16-bit.  */
-      val = fp->fx.fctrl & 0xFFFF;
+      val = fp.get_fxsave ()->fctrl & 0xFFFF;
       supply_register_by_name (regcache, "fctrl", &val);
 
-      val = fp->fx.fstat & 0xFFFF;
+      val = fp.get_fxsave ()->fstat & 0xFFFF;
       supply_register_by_name (regcache, "fstat", &val);
 
       /* Generate the form of ftag data that GDB expects.  */
-      top = (fp->fx.fstat >> 11) & 0x7;
+      top = (fp.get_fxsave ()->fstat >> 11) & 0x7;
       val = 0;
       for (i = 7; i >= 0; i--)
 	{
 	  int tag;
-	  if (fp->fx.ftag & (1 << i))
-	    tag = i387_ftag (fxp, (i + 8 - top) % 8);
+	  if (fp.get_fxsave ()->ftag & (1 << i))
+	    tag = i387_ftag (fp.get_fxsave (), (i + 8 - top) % 8);
 	  else
 	    tag = 3;
 	  val |= tag << (2 * i);
 	}
       supply_register_by_name (regcache, "ftag", &val);
 
-      val = fp->fx.fiseg & 0xFFFF;
+      val = fp.get_fxsave ()->fiseg & 0xFFFF;
       supply_register_by_name (regcache, "fiseg", &val);
 
-      val = fp->fx.foseg & 0xFFFF;
+      val = fp.get_fxsave ()->foseg & 0xFFFF;
       supply_register_by_name (regcache, "foseg", &val);
 
-      val = (fp->fx.fop) & 0x7FF;
+      val = (fp.get_fxsave ()->fop) & 0x7FF;
       supply_register_by_name (regcache, "fop", &val);
     }
 }
