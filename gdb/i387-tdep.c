@@ -757,8 +757,7 @@ static int xsave_avxh_offset[] =
 };
 
 #define XSAVE_AVXH_ADDR(tdep, xsave, regnum) \
-  (xsave + \
-   get_x86_extended_feature (X86_XSTATE_AVX_ID).offset + \
+  (i387_xsave (xsave).ymmh_space () + \
    xsave_avxh_offset[regnum - I387_YMM0H_REGNUM (tdep)])
 
 /* At xsave_ymm_avx512_offset[REGNUM] you'll find the offset to the location in
@@ -787,8 +786,7 @@ static int xsave_ymm_avx512_offset[] =
 };
 
 #define XSAVE_YMM_AVX512_ADDR(tdep, xsave, regnum) \
-  (xsave + \
-   get_x86_extended_feature (X86_XSTATE_ZMM_ID).offset + \
+  (i387_xsave (xsave).zmmh_high_space () + \
    xsave_ymm_avx512_offset[regnum - I387_YMM16H_REGNUM (tdep)])
 
 static int xsave_xmm_avx512_offset[] =
@@ -812,8 +810,7 @@ static int xsave_xmm_avx512_offset[] =
 };
 
 #define XSAVE_XMM_AVX512_ADDR(tdep, xsave, regnum) \
-  (xsave + \
-   get_x86_extended_feature (X86_XSTATE_ZMM_ID).offset + \
+  (i387_xsave (xsave).zmmh_high_space () + \
    xsave_xmm_avx512_offset[regnum - I387_XMM16_REGNUM (tdep)])
 
 static int xsave_mpx_offset[] = {
@@ -826,8 +823,7 @@ static int xsave_mpx_offset[] = {
 };
 
 #define XSAVE_MPX_ADDR(tdep, xsave, regnum) \
-  (xsave + \
-   get_x86_extended_feature (X86_XSTATE_BNDREGS_ID).offset + \
+  (i387_xsave (xsave).mpx_bnd_space () + \
    xsave_mpx_offset[regnum - I387_BND0R_REGNUM (tdep)])
 
   /* At xsave_avx512__h_offset[REGNUM] you find the offset to the location
@@ -847,8 +843,7 @@ static int xsave_avx512_k_offset[] =
 };
 
 #define XSAVE_AVX512_K_ADDR(tdep, xsave, regnum) \
-  (xsave + \
-  get_x86_extended_feature (X86_XSTATE_K_ID).offset + \
+  (i387_xsave (xsave).k_space () + \
   xsave_avx512_k_offset[regnum - I387_K0_REGNUM (tdep)])
 
 /* At xsave_avx512_zmm_h_offset[REGNUM] you find the offset to the location in
@@ -892,8 +887,7 @@ static int xsave_avx512_zmm_h_offset[] =
 };
 
 #define XSAVE_AVX512_ZMM_H_ADDR(tdep, xsave, regnum) \
-  (xsave + \
-   get_x86_extended_feature (X86_XSTATE_ZMM_H_ID).offset + \
+  (i387_xsave (xsave).zmmh_low_space () + \
    xsave_avx512_zmm_h_offset[regnum - I387_ZMM0H_REGNUM (tdep)])
 
 /* At xsave_pkeys_offset[REGNUM] you find the offset to the location
@@ -907,8 +901,7 @@ static int xsave_pkeys_offset[] =
 };
 
 #define XSAVE_PKEYS_ADDR(tdep, xsave, regnum) \
-  (xsave + \
-  get_x86_extended_feature (X86_XSTATE_PKRU_ID).offset + \
+  (i387_xsave (xsave).pkru_space () + \
   xsave_pkeys_offset[regnum - I387_PKRU_REGNUM (tdep)])
 
 
