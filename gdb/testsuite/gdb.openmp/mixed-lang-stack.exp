@@ -125,12 +125,17 @@ proc run_tests { lang } {
 	    } else {
 		set obj_pattern " = \\{<base_one> = \\{num1 = 1, num2 = 2, num3 = 3\\}, <base_two> = \\{string = $hex \"Something in C\\+\\+\", val = 3.5\\}, xxx = 9, yyy = 10.5\\}"
 	    }
+	    setup_kfail "JIRA DOQG/2526" "*-*-*"
 	    gdb_test "print obj" "${obj_pattern}"
 	}
     }
 }
 
-run_tests "auto"
-run_tests "fortran"
-run_tests "c"
-run_tests "c++"
+if {[require_openmp_device "GPU"] || [require_openmp_device "CPU"]} {
+    puts "This tests are disabled on CPU / GPU offload due to bugs - JIRA CMPLRLLVM/32087"
+} else {
+    run_tests "auto"
+    run_tests "fortran"
+    run_tests "c"
+    run_tests "c++"
+}
