@@ -307,31 +307,28 @@ post_create_inferior (struct target_ops *target, int from_tty)
 	throw;
     }
 
-  if (exec_bfd)
+  const unsigned solib_add_generation
+    = current_program_space->solib_add_generation;
+
+  /* Create the hooks to handle shared library load and unload
+     events.  */
+  solib_create_inferior_hook (from_tty);
+
+  if (current_program_space->solib_add_generation == solib_add_generation)
     {
-      const unsigned solib_add_generation
-	= current_program_space->solib_add_generation;
+      /* The platform-specific hook should load initial shared libraries,
+	 but didn't.  FROM_TTY will be incorrectly 0 but such solib
+	 targets should be fixed anyway.  Call it only after the solib
+	 target has been initialized by solib_create_inferior_hook.  */
 
-      /* Create the hooks to handle shared library load and unload
-	 events.  */
-      solib_create_inferior_hook (from_tty);
+      if (info_verbose)
+	warning (_("platform-specific solib_create_inferior_hook did "
+		   "not load initial shared libraries."));
 
-      if (current_program_space->solib_add_generation == solib_add_generation)
-	{
-	  /* The platform-specific hook should load initial shared libraries,
-	     but didn't.  FROM_TTY will be incorrectly 0 but such solib
-	     targets should be fixed anyway.  Call it only after the solib
-	     target has been initialized by solib_create_inferior_hook.  */
-
-	  if (info_verbose)
-	    warning (_("platform-specific solib_create_inferior_hook did "
-		       "not load initial shared libraries."));
-
-	  /* If the solist is global across processes, there's no need to
-	     refetch it here.  */
-	  if (!gdbarch_has_global_solist (target_gdbarch ()))
-	    solib_add (NULL, 0, auto_solib_add);
-	}
+      /* If the solist is global across processes, there's no need to
+	 refetch it here.  */
+      if (!gdbarch_has_global_solist (target_gdbarch ()))
+	solib_add (NULL, 0, auto_solib_add);
     }
 
   /* If the user sets watchpoints before execution having started,
