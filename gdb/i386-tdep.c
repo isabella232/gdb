@@ -4448,6 +4448,7 @@ i386_elf_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   /* Shadow stack.  */
   set_gdbarch_set_shstk_pointer (gdbarch, i386_cet_set_shstk_pointer);
   set_gdbarch_get_shstk_pointer (gdbarch, i386_cet_get_shstk_pointer);
+  set_gdbarch_shstk_push (gdbarch, i386_cet_shstk_push);
 }
 
 /* System V Release 4 (SVR4).  */
@@ -9053,6 +9054,35 @@ i386_cet_set_shstk_pointer (struct gdbarch *gdbarch, const CORE_ADDR *ssp)
   regcache_raw_write_unsigned (regcache, tdep->cet_regnum + 1, *ssp);
 }
 
+void
+i386_cet_shstk_push (struct gdbarch *gdbarch, CORE_ADDR *new_addr)
+{
+  if (!shstk_is_enabled ())
+    return;
+
+  CORE_ADDR ssp;
+  i386_cet_get_shstk_pointer (gdbarch, &ssp);
+
+  const int addr_size = gdbarch_addr_bit (gdbarch) / TARGET_CHAR_BIT;
+  const enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
+  const CORE_ADDR new_ssp = ssp - addr_size;
+
+  mem_range shstk_mem_range;
+  if (!cet_get_shstk_mem_range (new_ssp, &shstk_mem_range))
+    {
+      /* No call instruction is executed and we cannot allocate more memory
+	 for the inferior.  */
+      error (_("No space left on the shadow-stack."));
+    }
+
+  write_memory_unsigned_integer (new_ssp, addr_size, byte_order,
+				 (ULONGEST) *new_addr);
+
+  regcache *regcache = get_current_regcache ();
+  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+
+  regcache_raw_write_unsigned (regcache, tdep->cet_regnum + 1, new_ssp);
+}
 
 static struct cmd_list_element *mpx_set_cmdlist, *mpx_show_cmdlist;
 
